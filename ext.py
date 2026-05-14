@@ -13,7 +13,36 @@ _stealth = Stealth()
 COOKIES_FILE = Path(__file__).parent / "session_cookies.json"
 OUTPUT_DIR = Path(__file__).parent / "output"
 
-CHROMIUM_PATH = None  # Use Playwright's bundled Chromium
+def _find_chromium():
+    import shutil, subprocess
+
+    # 1. Nix profile symlink (Replit) — always resolves correctly regardless of PATH
+    nix_profile = "/nix/var/nix/profiles/default/bin/chromium"
+    if os.path.exists(nix_profile):
+        return nix_profile
+
+    # 2. Ask bash — it sources the Nix profile and has the full PATH
+    for name in ("chromium", "chromium-browser", "google-chrome"):
+        try:
+            result = subprocess.run(
+                ["bash", "-c", f"which {name}"],
+                capture_output=True, text=True, timeout=5
+            )
+            path = result.stdout.strip()
+            if path and os.path.exists(path):
+                return path
+        except Exception:
+            pass
+
+    # 3. shutil.which fallback (works on Termux / most Linux distros)
+    for name in ("chromium", "chromium-browser", "google-chrome"):
+        path = shutil.which(name)
+        if path:
+            return path
+
+    return None  # Fall back to Playwright's bundled Chromium
+
+CHROMIUM_PATH = _find_chromium()
 
 
 # ---------------------------------------------------------------------------
